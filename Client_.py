@@ -78,7 +78,7 @@ class TDClient():
                              'token_scope': '',
                              'loggedin': False}
         #dir_path = os.path.dirname(os.path.realpath(__file__))
-        dir_path = r'C:\SourceCode\FOREX_TD-AmeritradeAPI'
+        dir_path = r'C:\SourceCode\FOREX_TD-AmeritradeAPI\TD-Ameritrade_SQL'
         filename = 'TDAmeritradeState.json'
         file_path = os.path.join(dir_path, filename)
         if action == 'init':
@@ -252,7 +252,7 @@ class TDClient():
         return streaming_session
 #WATCHLIST
     def multiple_symbol_watchlist(self, symbols=None):
-        os.chdir('C:\SourceCode\FOREX_TD-AmeritradeAPI')
+        #os.chdir('C:\SourceCode\FOREX_TD-AmeritradeAPI\TD-Ameritrade_SQL')
         with open('WatchList.csv', newline='') as watchlist:
             WatchList = csv.reader(watchlist, delimiter=',')
             for Symbol in WatchList:
@@ -260,7 +260,7 @@ class TDClient():
                 return symbols
     def Historical_Endpoint(self, 
                             symbol:str=None, 
-                            period_type:str=None, 
+                            period_type:str=None,
                             period:int=None,
                             frequency_type:str=None,
                             frequency:int=None,
@@ -279,7 +279,6 @@ class TDClient():
         historicalContent = requests.get(url=historicalEndpoint, headers=merged_headers, params=historicalPayload)
         historicalData = historicalContent.json()
         print(historicalContent)
-        historicalData = json.loads(historicalData)
         print(historicalData)
         '''
         #print(historicalData)
