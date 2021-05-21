@@ -78,7 +78,7 @@ class TDClient():
                              'token_scope': '',
                              'loggedin': False}
         #dir_path = os.path.dirname(os.path.realpath(__file__))
-        dir_path = r'C:\SourceCode\FOREX_TD-AmeritradeAPI'
+        dir_path = r'C:\SourceCode\FOREX_TD-AmeritradeAPI\TD-Ameritrade_SQL'
         filename = 'TDAmeritradeState.json'
         file_path = os.path.join(dir_path, filename)
         if action == 'init':
@@ -252,7 +252,7 @@ class TDClient():
         return streaming_session
 #WATCHLIST
     def multiple_symbol_watchlist(self, symbols=None):
-        os.chdir('C:\SourceCode\FOREX_TD-AmeritradeAPI')
+        #os.chdir('C:\SourceCode\FOREX_TD-AmeritradeAPI\TD-Ameritrade_SQL')
         with open('WatchList.csv', newline='') as watchlist:
             WatchList = csv.reader(watchlist, delimiter=',')
             for Symbol in WatchList:
@@ -260,10 +260,11 @@ class TDClient():
                 return symbols
     def Historical_Endpoint(self, 
                             symbol:str=None, 
-                            period_type:str=None, 
+                            period_type:str=None,
                             period:int=None,
                             frequency_type:str=None,
                             frequency:int=None,
+                            start_date:str=None,
                             end_date:str=None,
                             extended_hours:bool=False):
         historicalEndpoint = r'https://api.tdameritrade.com/v1/marketdata/{}/pricehistory'.format(symbol)
@@ -272,29 +273,23 @@ class TDClient():
                              'period': period,
                              'periodType': period_type,
                              'endDate': end_date,
+                             'startDate': start_date,
                              'frequency': frequency,
                              'frequencyType': frequency_type,
                              'needExtendedHoursData': extended_hours
                              }
         historicalContent = requests.get(url=historicalEndpoint, headers=merged_headers, params=historicalPayload)
         historicalData = historicalContent.json()
-        print(historicalContent)
-        historicalData = json.loads(historicalData)
-        print(historicalData)
-        '''
-        #print(historicalData)
-        for ticker in symbol:
-            Symbol = historicalData['symbol']
-            Open = historicalData['candles'][0]['open']
-            High = historicalData['candles'][0]['high']
-            Low = historicalData['candles'][0]['low']
-            Close = historicalData['candles'][0]['close']
-            Volume = historicalData['candles'][0]['volume']
-            DateTime = historicalData['candles'][0]['datetime'] / 1000
-            Day_time = datetime.fromtimestamp(DateTime).strftime('%Y-%m-%d')
-            OHLC = [Symbol, Day_time, Open, High, Low, Close, Volume]
-        print(OHLC)
-        '''
+        Symbol = historicalData['symbol']
+        Open = historicalData['candles'][0]['open']
+        High = historicalData['candles'][0]['high']
+        Low = historicalData['candles'][0]['low']
+        Close = historicalData['candles'][0]['close']
+        Volume = historicalData['candles'][0]['volume']
+        DateTime = historicalData['candles'][0]['datetime'] / 1000
+        Day_time = datetime.fromtimestamp(DateTime).strftime('%Y-%m-%d')
+        OHLC = [Symbol, Day_time, Open, High, Low, Close, Volume]
+        print(OHLC) 
 #Account Info
     def accounts(self, accntNmber=None):
         AccntPayload = {'fields':'positions',
