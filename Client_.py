@@ -3,6 +3,7 @@ from Stream import TDStreamerClient
 from urllib.parse import urlparse
 from datetime import datetime
 from datetime import timedelta
+from datetime import date
 import urllib.parse
 import urllib3
 import uuid
@@ -17,9 +18,7 @@ import numpy as np
 import os
 from os import path
 from openpyxl import load_workbook
-
-
-
+import sqlite3 as sql
 
 class TDClient():
 
@@ -35,7 +34,8 @@ class TDClient():
                        'authenticaiton_url': 'https://auth.tdameritrade.com',
                        'auth_endpoint': 'https://auth.tdameritrade.com' + '/auth?',
                        'token_endpoint': 'https://api.tdameritrade.com' + '/v1' + '/oauth2/token',
-                       'refresh_enabled': True
+                       'refresh_enabled': True,
+                       'OHLC_database': 'OHLC.db'
                        }
         self.endpoint_arguments = {
                                    'get_user_principals': {'fields': ['streamerSubscriptionKeys', 'streamerConnectionInfo', 'preferences', 'surrogateIds']}
@@ -258,38 +258,72 @@ class TDClient():
             for Symbol in WatchList:
                 symbols = Symbol
                 return symbols
-    def Historical_Endpoint(self, 
-                            symbol:str=None, 
-                            period_type:str=None,
-                            period:int=None,
-                            frequency_type:str=None,
-                            frequency:int=None,
-                            start_date:str=None,
-                            end_date:str=None,
-                            extended_hours:bool=False):
-        historicalEndpoint = r'https://api.tdameritrade.com/v1/marketdata/{}/pricehistory'.format(symbol)
+    def Historical_Endpoint(self,symbol):
         merged_headers = self.headers()
-        historicalPayload = {'apikey':client_id,
-                             'period': period,
-                             'periodType': period_type,
-                             'endDate': end_date,
-                             'startDate': start_date,
-                             'frequency': frequency,
-                             'frequencyType': frequency_type,
-                             'needExtendedHoursData': extended_hours
-                             }
-        historicalContent = requests.get(url=historicalEndpoint, headers=merged_headers, params=historicalPayload)
-        historicalData = historicalContent.json()
-        Symbol = historicalData['symbol']
-        Open = historicalData['candles'][0]['open']
-        High = historicalData['candles'][0]['high']
-        Low = historicalData['candles'][0]['low']
-        Close = historicalData['candles'][0]['close']
-        Volume = historicalData['candles'][0]['volume']
-        DateTime = historicalData['candles'][0]['datetime'] / 1000
+        hist_endDate = str(int(round(datetime.now().timestamp() * 1000)))
+        for days in range(0,30,1):
+            HistDate = (int(round((datetime.now() - timedelta(days=days)).timestamp())))
+            hist_startDate = str(HistDate * 1000)
+            #hist_startDate = str(int(round(((datetime.now() - timedelta(days=days)).timestamp()) * 1000)))
+            #HistDate = (int(round((datetime.now()).timestamp())))
+            HistYear = datetime.fromtimestamp(HistDate).year
+            HistMonth = datetime.fromtimestamp(HistDate).month
+            HistDay = datetime.fromtimestamp(HistDate).day
+            NumbDays = date(HistYear,HistMonth,HistDay).isoweekday()
+            for Symbol in symbol:
+                historicalEndpoint = r'https://api.tdameritrade.com/v1/marketdata/{}/pricehistory'.format(Symbol)    
+                if NumbDays <= 5:        
+                    historicalPayload = {'apikey':client_id,
+                                        'endDate': hist_endDate,
+                                        'startDate': hist_startDate,
+                                        'needExtendedHoursData': False
+                                        }
+                else:
+                    False
+                historicalContent = requests.get(url=historicalEndpoint, headers=merged_headers, params=historicalPayload)
+                data = historicalContent.json()
+                historicalDict = self.historicalData_to_dict(symbol=symbol,data=data)
+    def historicalData_to_dict(self,symbol,data):
+        Symbol = data['symbol']
+        Open = data['candles'][0]['open']
+        High = data['candles'][0]['high']
+        Low = data['candles'][0]['low']
+        Close = data['candles'][0]['close']
+        Volume = data['candles'][0]['volume']
+        DateTime = data['candles'][0]['datetime'] / 1000
         Day_time = datetime.fromtimestamp(DateTime).strftime('%Y-%m-%d')
-        OHLC = [Symbol, Day_time, Open, High, Low, Close, Volume]
-        print(OHLC) 
+        dictOHLC = {'Symbol':Symbol, 
+                    'Date':Day_time,
+                    'Open':Open,
+                    'High':High,
+                    'Low':Low,
+                    'Close':Close,
+                    'Volume':Volume
+                    }
+        return dictOHLC
+#Databasing
+    def cursor(self):
+        connection = sql.connect(self.config['OHLC_database'])
+        cursor = connection.cursor()
+        return cursor
+    def createTable(self):
+        cursor = self.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS historicalData(
+                            id INTEGER PRIMARY KEY,
+                            symbol TEXT NOT NULL UNIQUE,
+                            date NOT NULL,
+                            open NOT NULL,
+                            high NOT NULL,
+                            low NOT NULL,
+                            close NOT NULL,
+                            volume NOT NULL
+                            )
+                       '''
+                      )
+    def dataImport_Table(self,symbol,data):
+        dictData = self.historicalData_to_dict(symbol=symbol,data=data)
+        cursor = self.cursor()
+        cursor.execute('INSERT INTO historicalData (symbol) VALUES (?)',(dictData['Symbol']))
 #Account Info
     def accounts(self, accntNmber=None):
         AccntPayload = {'fields':'positions',
